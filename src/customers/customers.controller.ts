@@ -1,5 +1,7 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Body, Post, Headers } from '@nestjs/common';
 import {
+  ApiBody,
+  ApiHeader,
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
@@ -7,6 +9,7 @@ import {
 } from '@nestjs/swagger';
 import { CustomersService } from './customers.service';
 import { CustomerVM } from './view-model/customers.VM';
+import { LoginDto } from './view-model/login-dto';
 
 @ApiTags('Customers')
 @Controller('customers')
@@ -33,6 +36,11 @@ export class CustomersController {
     description: 'find customers by email',
     required: false,
   })
+  @ApiHeader({
+    name: 'token',
+    required: true,
+    description: 'login',
+  })
   @ApiOkResponse({
     description: 'Customers founded.',
     type: [CustomerVM],
@@ -42,9 +50,11 @@ export class CustomersController {
     @Query('id') id,
     @Query('username') username,
     @Query('email') email,
+    @Headers('token') token,
   ): Promise<CustomerVM[]> {
     try {
-      let customers = await this.customersService.findAll();
+      let customers = await this.customersService.findAll(token);
+      if (!customers) return [];
       customers = customers.filter((ad) => {
         return ad.role == 'customer';
       });
@@ -64,6 +74,23 @@ export class CustomersController {
       return customers.map((customer) => CustomerVM.toViewModel(customer));
     } catch (error) {
       console.log(error);
+    }
+  }
+
+  @ApiOperation({
+    summary: 'Login',
+  })
+  @ApiBody({
+    type: LoginDto,
+  })
+  @Post('/login')
+  async login(@Body() data: LoginDto) {
+    try {
+      const { username, password } = data;
+      console.log(data);
+      return await this.customersService.login(username, password);
+    } catch (error) {
+      return error;
     }
   }
 }
